@@ -113,7 +113,7 @@ def instance_selector(instance_num):
         backend = backend_selector(16)
         instance_num = 1
         
-    qasmfile = f".\Instances\Instance_{instance_num}.qasm"  ###### Il est possible de cette ligne soit problèmatique.
+    qasmfile = f"./Instances/Instances/Instance_{instance_num}.qasm"  ###### Il est possible de cette ligne soit problèmatique.
     circuit = QuantumCircuit().from_qasm_file(qasmfile)
     circuit.remove_final_measurements()
     
