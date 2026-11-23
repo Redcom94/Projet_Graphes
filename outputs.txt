@@ -1,0 +1,9 @@
+Instance : 1 --- Meilleur mapping : [1, 5, 12, 0, 4, 14, 8, 3, 11, 7, 13, 2] --- Profondeur finale : 36 
+Instance : 2 --- Meilleur mapping : [10, 9, 7, 8, 6, 5, 4, 11, 12, 3, 13, 0, 1, 15, 14, 2] --- Profondeur finale : 62 
+Instance : 3 --- Meilleur mapping : [4, 1, 12, 15, 9, 6, 7, 2, 10, 11] --- Profondeur finale : 125 
+Instance : 4 --- Meilleur mapping : [11, 12, 4, 7, 1, 8, 6, 14, 19, 16, 10, 5, 15, 2, 9, 18, 13, 0, 17] --- Profondeur finale : 34 
+Instance : 5 --- Meilleur mapping : [6, 5, 17, 10, 14, 3, 19, 8, 2, 1, 12, 4] --- Profondeur finale : 326 
+Instance : 6 --- Meilleur mapping : [10, 15, 12, 17, 5, 0, 1, 6, 11, 16, 4, 13, 8, 3] --- Profondeur finale : 36 
+Instance : 7 --- Meilleur mapping : [15, 9, 7, 24, 18, 12, 13, 2, 17, 6, 10, 5, 0, 11, 8, 3, 16, 14, 22, 19] --- Profondeur finale : 33 
+Instance : 8 --- Meilleur mapping : [11, 16, 24, 25, 17, 8, 20, 22, 3, 14, 26, 7, 23, 13, 1, 19, 9, 18, 2, 0] --- Profondeur finale : 39 
+Instance : 9 --- Meilleur mapping : [16, 7, 24, 14, 20, 8, 5, 1, 12, 9, 2, 22, 4, 6, 18, 11, 15, 13, 3, 19, 10, 23, 21, 25, 26] --- Profondeur finale : 58 

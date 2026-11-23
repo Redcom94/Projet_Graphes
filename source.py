@@ -122,12 +122,12 @@ def instance_selector(instance_num):
     
     return backend,circuit,n,m
 
-def fitness_inner(mapping,circuit,backend):
+def fitness_inner(mapping,circuit,backend, seed):
     qr=circuit.qregs[0]
     init_mapping = {qr[i]:mapping[i] for i in range(len(mapping))}
     init_mapping = Layout(init_mapping)
 
-    pm = generate_preset_pass_manager(3,backend,initial_layout=init_mapping)
+    pm = generate_preset_pass_manager(3,backend,initial_layout=init_mapping, seed_transpiler = seed)
     pm.layout.remove(1)
     pm.layout.remove(1)
 
