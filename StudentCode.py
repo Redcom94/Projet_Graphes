@@ -20,7 +20,7 @@ def fitness(mapping):
 ##     ainsi que "backend" et "circuit" qui sont 
 ##     utiliser dans la fonction objectif (voir fitness) 
 ##-------------------------------------------------------
-instance_num=2     #### Entre 1 et 9 inclue
+instance_num=9     #### Entre 1 et 9 inclue
 
 backend,circuit,n,m = instance_selector(instance_num)
 
@@ -125,10 +125,11 @@ if __name__ == "__main__":
     print(f"Temps : {perf_counter() - debut:.2f} s")
 
     # Format de la présentation : placement puis coût, sur une seule ligne.
-    fichier = Path(__file__).resolve().parent / (
+    fichier = Path(__file__).resolve().parent / "resultats_v0" / (
         f"Groupe{NUMERO_GROUPE}_Challenge_{instance_num}.txt"
     )
+    fichier.parent.mkdir(exist_ok=True)
     fichier.write_text(" ".join(map(str, placement + [cout])) + "\n",
                        encoding="utf-8")
-    print(f"Résultat enregistré dans {fichier.name}")
+    print(f"Résultat enregistré dans {fichier}")
    

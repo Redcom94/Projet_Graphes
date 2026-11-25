@@ -1,6 +1,6 @@
 # Première version du recuit simulé
 
-Cette documentation décrit la première version de `StudentCode.py` et les essais réalisés sur les instances 1 et 2 du problème d'allocation de qubits. 
+Cette documentation décrit la première version de `StudentCode.py` et les essais réalisés sur les neuf instances du problème d'allocation de qubits. 
 
 ## Objectif et représentation
 
@@ -91,6 +91,72 @@ L'essai est sensiblement plus long. Chaque itération appelle Qiskit, dont le te
 
 Le recuit utilise une seule trajectoire aléatoire et ne garantit pas d'atteindre l'optimum dans un budget de 1 000 itérations. La valeur 59 n'est ni une solution injectée dans l'initialisation, ni un critère d'arrêt de cette version.
 
+## Complément des essais sur les instances 3 à 9
+
+Ces essais proviennent du terminal transmis par l'utilisateur, avec 1 000 itérations, une température initiale de 20, une température finale de 0,1 et la graine 42 du code. Chaque recherche utilise 1 001 évaluations. Les coûts et placements ont été comparés aux fichiers `GroupeX_Challenge_3.txt` à `GroupeX_Challenge_9.txt` : ils concordent et les placements sont admissibles. Les temps sont ceux du terminal ; aucune réévaluation de `fitness` n'a été effectuée pour cette mise à jour.
+
+Le fragment incomplet concernant `StudentCodeV2.py` et l'instance 9, inséré au milieu du texte, n'est pas un résultat V1 et n'est pas compté comme un essai supplémentaire.
+
+La référence ci-dessous est le minimum entre SABRE et GRASP dans le support du cours. Parmi les instances 3 à 9, seule la référence 22 de l'instance 7 y est indiquée comme exacte. L'écart relatif est `(coût V1 - référence) / référence × 100`.
+
+| Instance | n | m | Coût initial | Meilleur coût V1 | Temps (s) | Référence du cours | Écart relatif |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 3 | 10 | 16 | 180 | 129 | 103,61 | 108 | +19,44 % |
+| 4 | 19 | 20 | 66 | 34 | 37,33 | 30 | +13,33 % |
+| 5 | 12 | 20 | 372 | 316 | 173,69 | 308 | +2,60 % |
+| 6 | 14 | 20 | 106 | 31 | 56,81 | 25 | +24,00 % |
+| 7 | 20 | 27 | 99 | 42 | 66,87 | 22 | +90,91 % |
+| 8 | 20 | 27 | 76 | 28 | 76,63 | 17 | +64,71 % |
+| 9 | 25 | 27 | 160 | 74 | 82,48 | 36 | +105,56 % |
+
+La V1 améliore le coût initial sur les sept essais, sans atteindre les références du cours. Les plus grands écarts relatifs concernent les instances 7, 8 et 9. Les traces montrent encore des améliorations entre les affichages 900 et 1 000 sur les instances 4 et 8 ; cela ne permet pas de conclure à une convergence. Il s'agit d'un essai rapporté par instance, pas d'une moyenne sur plusieurs graines.
+
+### Placements conservés
+
+Instance 3 — coût 129 :
+
+```text
+[1, 11, 2, 5, 9, 3, 12, 8, 15, 13]
+```
+
+Instance 4 — coût 34 :
+
+```text
+[7, 12, 13, 3, 6, 16, 5, 15, 8, 0, 14, 18, 17, 2, 11, 1, 10, 4, 19]
+```
+
+Instance 5 — coût 316 :
+
+```text
+[12, 5, 7, 8, 4, 6, 15, 11, 18, 3, 16, 1]
+```
+
+Instance 6 — coût 31 :
+
+```text
+[18, 17, 5, 2, 9, 3, 4, 8, 16, 11, 14, 12, 19, 7]
+```
+
+Instance 7 — coût 42 :
+
+```text
+[23, 5, 22, 15, 13, 24, 11, 4, 1, 12, 6, 21, 17, 10, 3, 16, 2, 9, 7, 0]
+```
+
+Instance 8 — coût 28 :
+
+```text
+[4, 1, 11, 16, 5, 8, 12, 23, 20, 26, 24, 21, 2, 9, 14, 17, 25, 18, 6, 7]
+```
+
+Instance 9 — coût 74 :
+
+```text
+[21, 22, 17, 0, 24, 12, 23, 25, 26, 7, 3, 11, 4, 5, 6, 8, 16, 2, 19, 20, 13, 9, 18, 1, 10]
+```
+
+La comparaison complète avec la V2 est présentée dans `DOCUMENTATION_V2.md`. Les essais historiques des instances 1 et 2 ci-dessus sont conservés.
+
 ## Vérifications et limites
 
 Les vérifications réalisées sur la première version couvrent la validité des voisins, notamment avec ou sans positions libres, le nombre d'évaluations et la conservation du meilleur coût sur une fonction de test déterministe. Une exécution complète sur l'instance 1 a aussi vérifié l'enregistrement du résultat.
@@ -110,3 +176,8 @@ Depuis le dossier `Projet_Graphes`, lancer :
 Choisir `instance_num` dans la zone prévue par le professeur. Les paramètres du recuit se trouvent sous la section « À vous de jouer ». Renseigner `NUMERO_GROUPE` avant le rendu.
 
 Le fichier produit suit le nom `GroupeX_Challenge_1.txt` pour le groupe X et l'instance 1. Il contient les positions, puis le coût, sur une ligne. Une nouvelle exécution pour le même groupe et la même instance remplace ce fichier : conserver une copie des résultats que l'on souhaite comparer.
+
+
+## Dossier de sortie de la version de base
+
+La version de base, appelée V1 dans cette documentation et V0 pour le rangement des sorties, reste exécutée par `StudentCode.py`. Les prochaines exécutions enregistrent les solutions dans `resultats_v0/`, créé automatiquement. Les résultats historiques mentionnés ci-dessus ont également été déplacés dans `resultats_v0/`. Le nom et le contenu des fichiers de solution sont inchangés.
