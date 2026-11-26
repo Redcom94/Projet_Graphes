@@ -2,13 +2,44 @@ import random
 from source import instance_selector, fitness_inner
 import sys
 # --- PARAMÈTRES DE L'ALGORITHME ---
-POPULATION_SIZE = 100     # Nombre de solutions par génération
+POPULATION_SIZE = 50     # Nombre de solutions par génération
 GENERATIONS = 50           # Nombre de cycles d'évolution
 MUTATION_RATE = 0.35       # Probabilité de mutation (20%)
-TOURNAMENT_SIZE = 30        # Taille du tournoi pour la sélection
+TOURNAMENT_SIZE = 5     # Taille du tournoi pour la sélection
 SEED = 42
+LOCAL_SEARCH_RATE = 0.2
+LOCAL_SEARCH_STEPS = 3
 
 randomGen = random.Random(SEED)
+
+def local_search(individual, circuit, backend, n, m, fitness_cache, max_steps=10):
+    """Améliore localement un individu par voisins proches (hill climbing)."""
+    current = individual.copy()
+    current_score = evaluate_individual(current, circuit, backend, fitness_cache)
+
+    for _ in range(max_steps):
+        candidate = current.copy()
+
+        if randomGen.random() < 0.5 or n == m:
+            # Voisin de type swap : échange deux qubits du mapping courant
+            idx1, idx2 = randomGen.sample(range(n), 2)
+            candidate[idx1], candidate[idx2] = candidate[idx2], candidate[idx1]
+        else:
+            # Voisin de type replace : teste un qubit physique libre
+            unused_qubits = list(set(range(m)) - set(candidate))
+            if not unused_qubits:
+                continue
+            idx = randomGen.randrange(n)
+            candidate[idx] = randomGen.choice(unused_qubits)
+
+        cand_score = evaluate_individual(candidate, circuit, backend, fitness_cache)
+
+        # Amélioration stricte (on cherche à minimiser la profondeur)
+        if cand_score < current_score:
+            current = candidate
+            current_score = cand_score
+
+    return current
 
 def evaluate_individual(mapping, circuit, backend, fitness_cache):
     """Évalue un individu avec le cache pour gagner énormément de temps."""
@@ -110,20 +141,30 @@ def run_evolution(instance_number):
         new_population.append(best_overall_mapping.copy())
         
         while len(new_population) < POPULATION_SIZE:
-            # Sélection
             p1 = select_parent(population, scores)
             p2 = select_parent(population, scores)
-            
-            # Croisement
+
             child = crossover(p1, p2, n, m)
-            
-            # Mutation
             child = mutate(child, n, m)
-            
+
+            if randomGen.random() < LOCAL_SEARCH_RATE:
+                child = local_search(
+                    child, circuit, backend, n, m, fitness_cache, max_steps=LOCAL_SEARCH_STEPS
+                )
+
             new_population.append(child)
             
         population = new_population
+    # Évaluation
+    scores = [evaluate_individual(ind, circuit, backend, fitness_cache) for ind in population]
 
+    # Suivi du meilleur
+    min_score = min(scores)
+    best_in_gen = population[scores.index(min_score)]
+        
+    if min_score < best_overall_score:
+        best_overall_score = min_score
+        best_overall_mapping = best_in_gen.copy()
     print("\n--- OPTIMISATION TERMINÉE ---")
     print(f"Meilleur mapping trouvé : {best_overall_mapping}")
     print(f"Profondeur finale : {best_overall_score}")
@@ -131,13 +172,13 @@ def run_evolution(instance_number):
         fout.write(f"Instance : {instance_number} --- Meilleur mapping : {best_overall_mapping} --- Profondeur finale : {best_overall_score} \n")
 
 # Pour lancer le script
-#if __name__ == "__main__":
-#    instance_number = int(sys.argv[1])
-#    run_evolution(instance_number)
+if __name__ == "__main__":
+    instance_number = int(sys.argv[1])
+    run_evolution(instance_number)
 
 # Lancer toutes les instances:
-if __name__ == "__main__":
-    with open("outputs.txt","a") as fout:
-        fout.write(f"Seed = {SEED}\n")
-    for i in range(1,10):
-        run_evolution(i)
+# if __name__ == "__main__":
+#     with open("outputs.txt","a") as fout:
+#         fout.write(f"Seed = {SEED}\n")
+#     for i in range(1,10):
+#         run_evolution(i)
