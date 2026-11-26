@@ -1,0 +1,244 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Nov 14 11:08:40 2023
+
+@author: Jérôme
+"""
+
+from source import instance_selector, fitness_inner
+
+##-------------------------------------------------------
+##     Definition de la fonction objetif à minimiser
+##-------------------------------------------------------
+def fitness(mapping):
+    return fitness_inner(mapping, circuit, backend)
+
+##-------------------------------------------------------
+##     Pour choisir une instance: 
+##     Modifier instance_num ET RIEN D'AUTRE   
+##     La fonction instance_selector revoie n et m
+##     ainsi que "backend" et "circuit" qui sont 
+##     utiliser dans la fonction objectif (voir fitness) 
+##-------------------------------------------------------
+instance_num=9    #### Entre 1 et 9 inclus
+
+backend,circuit,n,m = instance_selector(instance_num)
+
+##-------------------------------------------------------
+##     A vous de jouer !  
+##-------------------------------------------------------
+
+import math
+import random
+from pathlib import Path
+from time import perf_counter
+
+
+# Paramètres à adapter après les premiers essais.
+NUMERO_GROUPE = "X"
+DUREE_SECONDES = 300  # 5 minutes par exécution
+FRACTION_CALIBRATION = 0.05  # 15 s sur un budget de 300 s
+PROBABILITE_INITIALE = 0.8
+TEMPERATURE_SECOURS = 20.0
+TEMPERATURE_FINALE = 0.1
+STAGNATION_SECONDES = 45.0
+NB_PERTURBATIONS = 3
+FACTEUR_RECHAUFFAGE = 0.25
+MIN_RESTANT_RELANCE_SECONDES = 15.0
+GRAINE = 42  # Fixe les mouvements, mais pas l'aléatoire interne de Qiskit.
+
+
+def generer_voisin(solution, nb_positions, rng):
+    """Échange deux qubits ou utilise une position physique encore libre."""
+    voisin = solution.copy()
+    libres = sorted(set(range(nb_positions)) - set(solution))
+
+    if libres and (len(solution) == 1 or rng.random() < 0.5):
+        i = rng.randrange(len(solution))
+        voisin[i] = rng.choice(libres)
+    elif len(solution) >= 2:
+        i, j = rng.sample(range(len(solution)), 2)
+        voisin[i], voisin[j] = voisin[j], voisin[i]
+
+    return voisin
+
+
+def calibrer_temperature(hausses, probabilite=0.8, secours=20.0):
+    """Vise une acceptation moyenne des hausses observées égale à probabilite."""
+    if not 0 < probabilite < 1:
+        raise ValueError("La probabilité doit être strictement entre 0 et 1.")
+    if not math.isfinite(secours) or secours <= 0:
+        raise ValueError("La température de secours doit être positive et finie.")
+    if any(not math.isfinite(d) or d <= 0 for d in hausses):
+        raise ValueError("Les hausses doivent être positives et finies.")
+    if not hausses:
+        return secours
+
+    # Cette borne garantit que chaque hausse a une probabilité >= à la cible.
+    bas = 0.0
+    haut = -max(hausses) / math.log(probabilite)
+    for _ in range(80):
+        milieu = (bas + haut) / 2
+        acceptation = sum(math.exp(-d / milieu) for d in hausses) / len(hausses)
+        if acceptation < probabilite:
+            bas = milieu
+        else:
+            haut = milieu
+    return (bas + haut) / 2
+
+
+def recuit_simule(evaluer, nb_qubits, nb_positions, duree_secondes=300,
+                  fraction_calibration=0.05, probabilite_initiale=0.8,
+                  temperature_secours=20.0, temperature_finale=0.1,
+                  graine=42, afficher=True, stagnation_secondes=45.0,
+                  nb_perturbations=3, facteur_rechauffage=0.25,
+                  min_restant_relance_secondes=15.0):
+    """Recherche limitée en temps réel écoulé, initialisation comprise.
+
+    Une évaluation commencée peut dépasser l'échéance ; aucun nouvel appel
+    n'est lancé ensuite. Le meilleur placement évalué est toujours renvoyé.
+    """
+    if not 1 <= nb_qubits <= nb_positions:
+        raise ValueError("Il faut 1 <= nb_qubits <= nb_positions.")
+    if not math.isfinite(duree_secondes) or duree_secondes <= 0:
+        raise ValueError("La durée doit être positive et finie.")
+    if not 0 <= fraction_calibration < 1:
+        raise ValueError("La fraction de calibration doit être dans [0, 1[.")
+    if not math.isfinite(temperature_finale) or temperature_finale <= 0:
+        raise ValueError("La température finale doit être positive et finie.")
+    calibrer_temperature([], probabilite_initiale, temperature_secours)
+    if not math.isfinite(stagnation_secondes) or stagnation_secondes <= 0:
+        raise ValueError("La durée de stagnation doit être positive et finie.")
+    if not isinstance(nb_perturbations, int) or nb_perturbations < 1:
+        raise ValueError("Le nombre de perturbations doit être un entier positif.")
+    if not 0 < facteur_rechauffage <= 1:
+        raise ValueError("Le facteur de réchauffage doit être dans ]0, 1].")
+    if not math.isfinite(min_restant_relance_secondes) or min_restant_relance_secondes <= 0:
+        raise ValueError("Le temps minimal restant doit être positif et fini.")
+    debut = perf_counter()
+    echeance = debut + duree_secondes
+    rng = random.Random(graine)
+    solution = rng.sample(range(nb_positions), nb_qubits)
+    # Toujours évaluer un placement initial pour pouvoir renvoyer une solution.
+    cout = evaluer(solution)
+    evaluations = 1
+    meilleure_solution, meilleur_cout = solution.copy(), cout
+    if afficher:
+        print(f"Budget : {duree_secondes:.1f} s | coût initial : {cout}")
+    hausses = []
+    evaluations_calibration = 0
+    fin_calibration = debut + duree_secondes * fraction_calibration
+    while perf_counter() < fin_calibration:
+        voisin = generer_voisin(solution, nb_positions, rng)
+        if perf_counter() >= fin_calibration:
+            break
+        cout_voisin = evaluer(voisin)
+        evaluations += 1
+        evaluations_calibration += 1
+        if cout_voisin > cout:
+            hausses.append(cout_voisin - cout)
+        solution, cout = voisin, cout_voisin
+        if cout < meilleur_cout:
+            meilleure_solution, meilleur_cout = solution.copy(), cout
+    temperature_initiale = max(
+        temperature_finale,
+        calibrer_temperature(hausses, probabilite_initiale, temperature_secours),
+    )
+    if afficher:
+        print(f"Calibration : {evaluations_calibration} évaluations, "
+              f"{len(hausses)} hausses | temps écoulé : {perf_counter() - debut:.2f} s")
+        print(f"Température initiale : {temperature_initiale:.3f}")
+        if not hausses:
+            print("Aucune hausse observée : température de secours utilisée.")
+    debut_phase = perf_counter()
+    temperature_phase = temperature_initiale
+    dernier_affichage = debut_phase
+    derniere_amelioration = debut_phase
+    relances = 0
+    while True:
+        maintenant = perf_counter()
+        if maintenant >= echeance:
+            break
+        progression = min(1.0, max(0.0,
+            (maintenant - debut_phase) / max(echeance - debut_phase, 1e-12)))
+        temperature = temperature_phase * (
+            temperature_finale / temperature_phase
+        ) ** progression
+        relancer = (maintenant - derniere_amelioration >= stagnation_secondes
+                    and echeance - maintenant >= min_restant_relance_secondes
+                    and nb_positions > 1)
+        if relancer:
+            voisin = meilleure_solution.copy()
+            for _ in range(nb_perturbations):
+                voisin = generer_voisin(voisin, nb_positions, rng)
+            if voisin == meilleure_solution:
+                voisin = generer_voisin(voisin, nb_positions, rng)
+            if perf_counter() >= echeance:
+                break
+            cout = evaluer(voisin)
+            evaluations += 1
+            solution = voisin
+            relances += 1
+            debut_phase = perf_counter()
+            derniere_amelioration = debut_phase
+            temperature_phase = max(temperature,
+                                    temperature_initiale * facteur_rechauffage,
+                                    temperature_finale)
+            temperature = temperature_phase
+            if afficher:
+                print(f"Relance {relances} à {debut_phase - debut:.2f} s | "
+                      f"évaluation {evaluations} | T = {temperature:.3f} | coût du saut = {cout}")
+        else:
+            voisin = generer_voisin(solution, nb_positions, rng)
+            if perf_counter() >= echeance:
+                break
+            cout_voisin = evaluer(voisin)
+            evaluations += 1
+            delta = cout_voisin - cout
+            if delta <= 0 or rng.random() < math.exp(-delta / temperature):
+                solution, cout = voisin, cout_voisin
+        if cout < meilleur_cout:
+            meilleure_solution, meilleur_cout = solution.copy(), cout
+            derniere_amelioration = perf_counter()
+        maintenant = perf_counter()
+        if afficher and maintenant - dernier_affichage >= 10:
+            print(f"Temps {maintenant - debut:.1f}/{duree_secondes:.1f} s | "
+                  f"évaluations = {evaluations} | T = {temperature:.3f} | "
+                  f"meilleur coût = {meilleur_cout} | relances = {relances}")
+            dernier_affichage = maintenant
+    if afficher:
+        print(f"Terminé : {perf_counter() - debut:.2f} s | "
+              f"{evaluations} évaluations | meilleur coût = {meilleur_cout} | "
+              f"relances = {relances}")
+    return meilleure_solution, meilleur_cout
+
+
+if __name__ == "__main__":
+    debut = perf_counter()
+    print(f"V4 - Instance {instance_num} : {n} qubits à placer sur {m} positions")
+    placement, cout = recuit_simule(
+        fitness, n, m,
+        duree_secondes=DUREE_SECONDES,
+        fraction_calibration=FRACTION_CALIBRATION,
+        probabilite_initiale=PROBABILITE_INITIALE,
+        temperature_secours=TEMPERATURE_SECOURS,
+        temperature_finale=TEMPERATURE_FINALE,
+        graine=GRAINE,
+        stagnation_secondes=STAGNATION_SECONDES,
+        nb_perturbations=NB_PERTURBATIONS,
+        facteur_rechauffage=FACTEUR_RECHAUFFAGE,
+        min_restant_relance_secondes=MIN_RESTANT_RELANCE_SECONDES,
+    )
+    print(f"Meilleur placement : {placement}")
+    print(f"Coût observé : {cout}")
+    print(f"Temps : {perf_counter() - debut:.2f} s")
+
+    # Format de la présentation : placement puis coût, sur une seule ligne.
+    fichier = Path(__file__).resolve().parent / "resultats_v4" / (
+        f"Groupe{NUMERO_GROUPE}_Challenge_{instance_num}.txt"
+    )
+    fichier.parent.mkdir(exist_ok=True)
+    fichier.write_text(" ".join(map(str, placement + [cout])) + "\n",
+                       encoding="utf-8")
+    print(f"Résultat enregistré dans {fichier}")
+   
