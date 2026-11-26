@@ -4,16 +4,16 @@ import sys
 from source import instance_selector, fitness_inner
 
 # --- PARAMÈTRES DE L'ALGORITHME ---
-POPULATION_SIZE = 50       # Nombre de solutions par génération
+POPULATION_SIZE = 60      # Nombre de solutions par génération
 GENERATIONS = 40           # Nombre max de générations
-MUTATION_RATE = 0.35       # Probabilité de mutation (35 %)
+MUTATION_RATE = 0.5       # Probabilité de mutation (20 %)
 TOURNAMENT_SIZE = 5        # Taille du tournoi pour la sélection
-PATIENCE = 8               # Arrêt si pas d'amélioration pendant N générations
+PATIENCE = 20               # Arrêt si pas d'amélioration pendant N générations
 SEED = 42
 
 # --- PARAMÈTRES DU RECUIT (remplace la recherche locale) ---
-LOCAL_SEARCH_RATE = 0.2    # Proportion d'enfants affinés par recuit
-LOCAL_SEARCH_STEPS = 10    # Itérations du mini-recuit
+LOCAL_SEARCH_RATE = 0.5    # Proportion d'enfants affinés par recuit
+LOCAL_SEARCH_STEPS = 30    # Itérations du mini-recuit
 SA_NB_CALIBRATION = 30     # Évaluations pour calibrer T (une fois par instance)
 SA_PROBA_INITIALE = 0.3    # Acceptation initiale visée (affinage, donc modérée)
 SA_TEMP_SECOURS = 5.0
@@ -294,15 +294,14 @@ def run_evolution(instance_number):
                    f"{best_overall_mapping} --- Profondeur finale : {best_overall_score} \n")
 
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage : python script.py <numéro_instance>")
-        sys.exit(1)
-    run_evolution(int(sys.argv[1]))
-
-# Lancer toutes les instances :
 # if __name__ == "__main__":
-#     with open("outputs.txt", "a") as fout:
-#         fout.write(f"Seed = {SEED}\n")
-#     for i in list(range(1, 10)) + [11, 12, 13]:
-#         run_evolution(i)
+#     if len(sys.argv) < 2:
+#         print("Usage : python script.py <numéro_instance>")
+#         sys.exit(1)
+#     run_evolution(int(sys.argv[1]))
+
+if __name__ == "__main__":
+    with open("outputs.txt", "a") as fout:
+        fout.write(f"Seed = {SEED}\n")
+    for i in list(range(1, 10)):
+        run_evolution(i)
