@@ -1,0 +1,11 @@
+Budget : 300 s
+Graine : 42
+Temps réel : 271.084 s
+Évaluations : 2641
+Placement : [10, 6, 11, 12, 14, 1, 4, 13, 2, 3]
+Médiane informative : 124
+Coût inscrit dans la solution (meilleur observé) : 115
+Coûts observés pour ce placement : [115, 143, 150, 124, 124]
+Meilleur coût isolé de toute la recherche : 115
+Évaluations par phase : {'initialisation': 1, 'construction': 16, 'recherche': 2367, 'reliage': 194, 'diversification': 43, 'confirmation': 8, 'validation': 12}
+Finalistes : [{'placement': [10, 6, 11, 12, 14, 1, 4, 13, 2, 3], 'couts': [115, 143, 150, 124, 124], 'mediane': 124, 'meilleur_cout': 115}, {'placement': [2, 3, 13, 12, 11, 4, 6, 9, 5, 10], 'couts': [116, 119, 120, 134, 123], 'mediane': 120, 'meilleur_cout': 116}, {'placement': [13, 11, 4, 3, 12, 1, 2, 0, 15, 14], 'couts': [116, 131, 128, 122, 128], 'mediane': 128, 'meilleur_cout': 116}, {'placement': [0, 1, 15, 14, 2, 4, 13, 11, 3, 12], 'couts': [117, 133, 122, 119, 122], 'mediane': 122, 'meilleur_cout': 117}]
