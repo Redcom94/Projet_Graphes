@@ -1,5 +1,19 @@
 # Recuit simulé avec calibration de température
 
+## Mode actuel : budget de cinq minutes
+
+Depuis la modification du 26 novembre 2026, le programme utilise `DUREE_SECONDES = 300` par défaut (5 minutes). L'argument de `recuit_simule` est désormais `duree_secondes=300` ; `nb_iterations` a été supprimé. Le nombre d'évaluations est affiché à titre de mesure, sans servir de limite.
+
+Le budget est du temps réel écoulé mesuré par `perf_counter`, pas du temps CPU. Il inclut l'évaluation initiale, la recherche et ses affichages, mais exclut le chargement préalable de l'instance et l'écriture finale du fichier. La limite est vérifiée avant chaque nouvelle évaluation après l'initialisation. Une évaluation Qiskit déjà commencée termine normalement : le temps final peut dépasser légèrement le budget, voire davantage si cet appel est long. Un premier placement est toujours évalué pour garantir un résultat, même avec une durée très courte.
+
+Le refroidissement géométrique dépend de la fraction du temps de recherche écoulé, et non du nombre d'itérations. La température tend vers la température finale à l'échéance ; la dernière évaluation peut commencer avant de l'atteindre exactement.
+
+La calibration utilise `FRACTION_CALIBRATION = 0.05` : sa limite est fixée à 15 secondes après le début de la recherche pour un budget de 300 secondes, évaluation initiale comprise. Son nombre de mouvements est variable. Un appel de calibration en cours peut dépasser cette limite ; ce temps est déduit du temps restant pour le recuit. La calibration cesse toujours de lancer des appels à sa propre échéance. S'il n'y a aucune hausse observée, la température de secours est utilisée.
+
+**Les sections suivantes décrivent le protocole historique à nombre d'itérations fixé.** Les résultats déjà enregistrés sont conservés et ne doivent pas être présentés comme des essais à cinq minutes. Les anciennes signatures et limites en évaluations qui y sont citées sont remplacées par les paramètres ci-dessus. Il faudra une nouvelle campagne pour comparer les versions à durée égale. Les commandes de lancement et dossiers de sortie restent identiques ; une nouvelle exécution peut remplacer une ancienne solution du même groupe et de la même instance.
+
+## Historique avant le passage au budget temporel
+
 La V2 est dans `StudentCodeV2.py`. La V1 reste dans `StudentCode.py` et ses résultats sont conservés. Le code d'évaluation `source.py` reste inchangé.
 
 ## Changement par rapport à la V1
