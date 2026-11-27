@@ -1,21 +1,23 @@
 import math
 import random
 import sys
+from time import perf_counter
 from source import instance_selector, fitness_inner
 
 # --- PARAMÈTRES DE L'ALGORITHME ---
-POPULATION_SIZE = 60      # Nombre de solutions par génération
-GENERATIONS = 40           # Nombre max de générations
-MUTATION_RATE = 0.5       # Probabilité de mutation (20 %)
-TOURNAMENT_SIZE = 5        # Taille du tournoi pour la sélection
-PATIENCE = 20               # Arrêt si pas d'amélioration pendant N générations
+POPULATION_SIZE = 20      # Nombre de solutions par génération
+GENERATIONS = 100           # Nombre max de générations
+MUTATION_RATE = 0.5        # Probabilité de mutation (50 %)
+TOURNAMENT_SIZE = 3        # Taille du tournoi pour la sélection
+PATIENCE = 200              # Arrêt si pas d'amélioration pendant N générations
 SEED = 42
+TEMPS_MAX_AG = 300.0       # Limite de temps par instance (secondes), None = pas de limite
 
-# --- PARAMÈTRES DU RECUIT (remplace la recherche locale) ---
-LOCAL_SEARCH_RATE = 0.5    # Proportion d'enfants affinés par recuit
-LOCAL_SEARCH_STEPS = 30    # Itérations du mini-recuit
-SA_NB_CALIBRATION = 30     # Évaluations pour calibrer T (une fois par instance)
-SA_PROBA_INITIALE = 0.3    # Acceptation initiale visée (affinage, donc modérée)
+# --- PARAMÈTRES DU RECUIT (affinage des enfants) ---
+LOCAL_SEARCH_RATE = 0.2       # Proportion d'enfants affinés par recuit
+LOCAL_SEARCH_SECONDS = 2.0    # Durée du recuit par enfant affiné
+SA_NB_CALIBRATION = 30        # Évaluations pour calibrer T (une fois par instance)
+SA_PROBA_INITIALE = 0.3       # Acceptation initiale visée
 SA_TEMP_SECOURS = 5.0
 SA_TEMP_FINALE = 0.1
 
@@ -23,7 +25,7 @@ randomGen = random.Random(SEED)
 
 
 # ----------------------------------------------------------------------
-#  Recuit simulé
+#  Recuit simulé (version V4 : limité en temps)
 # ----------------------------------------------------------------------
 def generer_voisin(solution, nb_positions, rng):
     """Échange deux qubits ou utilise une position physique encore libre."""
@@ -63,39 +65,59 @@ def calibrer_temperature(hausses, probabilite=0.8, secours=20.0):
     return (bas + haut) / 2
 
 
-def recuit_simule(evaluer, nb_qubits, nb_positions, nb_iterations=1000,
-                  nb_calibration=50, probabilite_initiale=0.8,
+def recuit_simule(evaluer, nb_qubits, nb_positions, duree_secondes=300,
+                  fraction_calibration=0.05, probabilite_initiale=0.8,
                   temperature_secours=20.0, temperature_finale=0.1,
-                  graine=42, afficher=True, solution_initiale=None):
-    """Budget total : 1 + nb_iterations appels, calibration comprise.
+                  graine=42, afficher=True, stagnation_secondes=45.0,
+                  nb_perturbations=3, facteur_rechauffage=0.25,
+                  min_restant_relance_secondes=15.0, solution_initiale=None):
+    """Recherche limitée en temps réel écoulé, initialisation comprise.
 
     Si solution_initiale est fournie, le recuit part de ce placement
     au lieu d'un placement aléatoire.
     """
     if not 1 <= nb_qubits <= nb_positions:
         raise ValueError("Il faut 1 <= nb_qubits <= nb_positions.")
-    if not isinstance(nb_iterations, int) or nb_iterations < 1:
-        raise ValueError("Le nombre d'itérations doit être un entier positif.")
-    if not isinstance(nb_calibration, int) or not 0 <= nb_calibration < nb_iterations:
-        raise ValueError("Il faut 0 <= calibration < nombre d'itérations.")
+    if not math.isfinite(duree_secondes) or duree_secondes <= 0:
+        raise ValueError("La durée doit être positive et finie.")
+    if not 0 <= fraction_calibration < 1:
+        raise ValueError("La fraction de calibration doit être dans [0, 1[.")
     if not math.isfinite(temperature_finale) or temperature_finale <= 0:
         raise ValueError("La température finale doit être positive et finie.")
     calibrer_temperature([], probabilite_initiale, temperature_secours)
+    if not math.isfinite(stagnation_secondes) or stagnation_secondes <= 0:
+        raise ValueError("La durée de stagnation doit être positive et finie.")
+    if not isinstance(nb_perturbations, int) or nb_perturbations < 1:
+        raise ValueError("Le nombre de perturbations doit être un entier positif.")
+    if not 0 < facteur_rechauffage <= 1:
+        raise ValueError("Le facteur de réchauffage doit être dans ]0, 1].")
+    if not math.isfinite(min_restant_relance_secondes) or min_restant_relance_secondes <= 0:
+        raise ValueError("Le temps minimal restant doit être positif et fini.")
 
+    debut = perf_counter()
+    echeance = debut + duree_secondes
     rng = random.Random(graine)
     if solution_initiale is None:
         solution = rng.sample(range(nb_positions), nb_qubits)
     else:
         solution = list(solution_initiale)
     cout = evaluer(solution)
+    evaluations = 1
     meilleure_solution, meilleur_cout = solution.copy(), cout
     if afficher:
-        print(f"Coût initial : {cout}")
+        print(f"Budget : {duree_secondes:.1f} s | coût initial : {cout}")
 
+    # --- Calibration de la température ---
     hausses = []
-    for _ in range(nb_calibration):
+    evaluations_calibration = 0
+    fin_calibration = debut + duree_secondes * fraction_calibration
+    while perf_counter() < fin_calibration:
         voisin = generer_voisin(solution, nb_positions, rng)
+        if perf_counter() >= fin_calibration:
+            break
         cout_voisin = evaluer(voisin)
+        evaluations += 1
+        evaluations_calibration += 1
         if cout_voisin > cout:
             hausses.append(cout_voisin - cout)
         solution, cout = voisin, cout_voisin
@@ -107,27 +129,74 @@ def recuit_simule(evaluer, nb_qubits, nb_positions, nb_iterations=1000,
         calibrer_temperature(hausses, probabilite_initiale, temperature_secours),
     )
     if afficher:
-        print(f"Calibration : {nb_calibration} évaluations, {len(hausses)} hausses")
+        print(f"Calibration : {evaluations_calibration} évaluations, "
+              f"{len(hausses)} hausses | temps écoulé : {perf_counter() - debut:.2f} s")
         print(f"Température initiale : {temperature_initiale:.3f}")
+        if not hausses:
+            print("Aucune hausse observée : température de secours utilisée.")
 
-    nb_recherche = nb_iterations - nb_calibration
-    for iteration in range(nb_recherche):
-        progression = iteration / max(1, nb_recherche - 1)
-        temperature = temperature_initiale * (
-            temperature_finale / temperature_initiale
+    # --- Recuit avec relances ---
+    debut_phase = perf_counter()
+    temperature_phase = temperature_initiale
+    dernier_affichage = debut_phase
+    derniere_amelioration = debut_phase
+    relances = 0
+    while True:
+        maintenant = perf_counter()
+        if maintenant >= echeance:
+            break
+        progression = min(1.0, max(0.0,
+            (maintenant - debut_phase) / max(echeance - debut_phase, 1e-12)))
+        temperature = temperature_phase * (
+            temperature_finale / temperature_phase
         ) ** progression
-        voisin = generer_voisin(solution, nb_positions, rng)
-        cout_voisin = evaluer(voisin)
-        delta = cout_voisin - cout
-        if delta <= 0 or rng.random() < math.exp(-delta / temperature):
-            solution, cout = voisin, cout_voisin
+        relancer = (maintenant - derniere_amelioration >= stagnation_secondes
+                    and echeance - maintenant >= min_restant_relance_secondes
+                    and nb_positions > 1)
+        if relancer:
+            voisin = meilleure_solution.copy()
+            for _ in range(nb_perturbations):
+                voisin = generer_voisin(voisin, nb_positions, rng)
+            if voisin == meilleure_solution:
+                voisin = generer_voisin(voisin, nb_positions, rng)
+            if perf_counter() >= echeance:
+                break
+            cout = evaluer(voisin)
+            evaluations += 1
+            solution = voisin
+            relances += 1
+            debut_phase = perf_counter()
+            derniere_amelioration = debut_phase
+            temperature_phase = max(temperature,
+                                    temperature_initiale * facteur_rechauffage,
+                                    temperature_finale)
+            temperature = temperature_phase
+            if afficher:
+                print(f"Relance {relances} à {debut_phase - debut:.2f} s | "
+                      f"évaluation {evaluations} | T = {temperature:.3f} | coût du saut = {cout}")
+        else:
+            voisin = generer_voisin(solution, nb_positions, rng)
+            if perf_counter() >= echeance:
+                break
+            cout_voisin = evaluer(voisin)
+            evaluations += 1
+            delta = cout_voisin - cout
+            if delta <= 0 or rng.random() < math.exp(-delta / temperature):
+                solution, cout = voisin, cout_voisin
         if cout < meilleur_cout:
             meilleure_solution, meilleur_cout = solution.copy(), cout
-        if afficher and ((iteration + 1) % 100 == 0
-                         or iteration + 1 == nb_recherche):
-            print(f"Recherche {iteration + 1}/{nb_recherche} | "
-                  f"T = {temperature:.3f} | coût courant = {cout} | "
-                  f"meilleur coût = {meilleur_cout}")
+            derniere_amelioration = perf_counter()
+        maintenant = perf_counter()
+        if afficher and maintenant - dernier_affichage >= 10:
+            print(f"Temps {maintenant - debut:.1f}/{duree_secondes:.1f} s | "
+                  f"évaluations = {evaluations} | T = {temperature:.3f} | "
+                  f"meilleur coût = {meilleur_cout} | relances = {relances}")
+            dernier_affichage = maintenant
+
+    if afficher:
+        print(f"Terminé : {perf_counter() - debut:.2f} s | "
+              f"{evaluations} évaluations | meilleur coût = {meilleur_cout} | "
+              f"relances = {relances}")
     return meilleure_solution, meilleur_cout
 
 
@@ -163,19 +232,22 @@ def calibrer_instance(circuit, backend, n, m, fitness_cache):
 
 
 # ----------------------------------------------------------------------
-#  Affinage par mini-recuit (remplace l'ancienne local_search)
+#  Affinage par recuit V4 (remplace l'ancienne local_search)
 # ----------------------------------------------------------------------
 def local_search(individual, circuit, backend, n, m, fitness_cache, temperature_depart):
-    """Affine un individu par un mini-recuit simulé, sans calibration."""
+    """Affine un individu par le recuit V4, limité à LOCAL_SEARCH_SECONDS."""
     evaluer = lambda mapping: evaluate_individual(mapping, circuit, backend, fitness_cache)
     meilleure, _ = recuit_simule(
         evaluer, n, m,
-        nb_iterations=LOCAL_SEARCH_STEPS,
-        nb_calibration=0,
+        duree_secondes=LOCAL_SEARCH_SECONDS,
+        fraction_calibration=0.0,                 # pas de calibration interne
+        probabilite_initiale=SA_PROBA_INITIALE,
         temperature_secours=temperature_depart,   # utilisée comme T initiale
         temperature_finale=min(SA_TEMP_FINALE, temperature_depart),
         graine=randomGen.randrange(2**32),
         afficher=False,
+        stagnation_secondes=1e9,                  # pas de relance sur un si court recuit
+        min_restant_relance_secondes=1e9,
         solution_initiale=individual,
     )
     return meilleure
@@ -230,6 +302,7 @@ def mutate(individual, n, m):
 def run_evolution(instance_number):
     randomGen.seed(SEED)          # reproductibilité par instance
     fitness_cache = {}
+    t_debut = perf_counter()
 
     print(f"Chargement de l'instance...{instance_number}")
     backend, circuit, n, m = instance_selector(instance_number)
@@ -256,10 +329,14 @@ def run_evolution(instance_number):
         else:
             stagnation += 1
 
-        print(f"Génération {gen} | Meilleur score (profondeur) : {min_score}")
+        print(f"Génération {gen} | Meilleur score (profondeur) : {min_score} "
+              f"| {perf_counter() - t_debut:.0f} s")
 
         if stagnation >= PATIENCE:
             print(f"Arrêt anticipé : pas d'amélioration depuis {PATIENCE} générations.")
+            break
+        if TEMPS_MAX_AG is not None and perf_counter() - t_debut >= TEMPS_MAX_AG:
+            print("Arrêt : limite de temps atteinte.")
             break
 
         new_population = [best_overall_mapping.copy()]   # élitisme
