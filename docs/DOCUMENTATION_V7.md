@@ -1,14 +1,7 @@
-# V7 — Métaheuristique hybride pour le Qubit Allocation Problem
+# V7 - Métaheuristique hybride pour le Qubit Allocation Problem
 
-## 1. Objectif du projet
 
-Le but est de placer les `n` qubits logiques d'un circuit sur les `m` qubits physiques d'une machine quantique, de manière à minimiser la profondeur du circuit après transpilation. Une solution est un mapping, c'est-à-dire une liste de `n` positions physiques distinctes parmi `0, …, m-1`.
-
-Par exemple, `[2, 0, 4]` signifie que les qubits logiques 0, 1 et 2 sont placés respectivement sur les qubits physiques 2, 0 et 4. L'ordre est donc important. L'espace de recherche contient `m! / (m-n)!` solutions, ce qui rend une recherche exhaustive impraticable dans le budget de cinq minutes.
-
-Le fichier `StudentCodeV7.py` propose les mappings et le fichier `source.py`, fourni par le professeur et laissé inchangé, les évalue avec Qiskit 1.2.4. La fonction officielle `fitness` renvoie la profondeur du circuit transpilé : plus elle est faible, mieux c'est.
-
-## 2. Fonctionnement général de la V7
+## 1. Fonctionnement général de la V7
 
 La V7 est une **métaheuristique hybride à dominante mémétique** : elle combine une construction inspirée de GRASP, une population élite, une recherche locale, des croisements et des mécanismes de diversification inspirés du recuit simulé et des voisinages variables.
 
@@ -98,7 +91,7 @@ Médiane : 115
 
 Le minimum brut de toute la recherche était 106, mais cela ne signifie pas que le mapping exporté donne 106. La médiane favorise une bonne performance typique ; elle ne garantit pas un coût constant. Ce critère est notre choix provisoire, car le protocole de vérification du professeur n'est pas précisé.
 
-## 3. Liens avec les principes du cours
+## 2. Liens avec les principes du cours
 
 Le principe central est le compromis entre **intensification** (améliorer les bonnes solutions) et **diversification** (découvrir de nouvelles régions de l'espace de recherche).
 
@@ -113,7 +106,7 @@ Le principe central est le compromis entre **intensification** (améliorer les b
 
 La mémoire des solutions rappelle l'idée de mémoire du cours sur la recherche taboue, mais **la V7 n'est pas une recherche taboue classique** : elle ne possède pas de liste taboue temporaire de mouvements.
 
-## 4. Implémentation et exécution
+## 3. Implémentation et exécution
 
 | Élément du code | Rôle |
 |---|---|
@@ -132,7 +125,30 @@ python StudentCodeV7.py
 
 Le résultat est écrit dans `resultats_v7/GroupeXX_Instance_1.txt` (pour l'instance 1 et le groupe par défaut), avec les positions suivies du coût médian sur une seule ligne. Le dossier est créé automatiquement. Pendant la recherche, le meilleur coût brut est sauvegardé provisoirement ; la validation finale remplace ce résultat par le mapping retenu.
 
-## 5. Résultats expérimentaux
+### 3.1. Parallélisation des évaluations (maître-travailleurs)
+
+La V7 utilise `multiprocessing` pour évaluer plusieurs mappings en même temps. Le processus principal (maître) pilote la métaheuristique : il génère les candidats, récupère leurs coûts et met à jour la population élite. Les processus secondaires (workers) exécutent les appels à `fitness` indépendamment, avec le même `source.py`.
+
+```mermaid
+flowchart TD
+    A["Processus principal : génération des mappings"] --> B["File de tâches : jusqu'à 8 candidats par lot courant"]
+    B --> W1["Worker 1 : fitness"]
+    B --> W2["Worker 2 : fitness"]
+    B --> W3["Worker 3 : fitness"]
+    B --> W4["Worker 4 : fitness"]
+    W1 --> C["Récupération des coûts"]
+    W2 --> C
+    W3 --> C
+    W4 --> C
+    C --> D["Mise à jour des élites et de la mémoire"]
+    D --> A
+```
+
+Avec quatre workers, un lot courant de huit candidats peut être évalué en deux vagues dans le cas idéal. Dès qu'un worker termine une tâche, il peut traiter la suivante. Si une évaluation prend une seconde, quatre évaluations prennent idéalement une seconde en parallèle au lieu de quatre en série. En pratique, le gain dépend du processeur, des communications entre processus et de la durée des transpilations.
+
+Dans le code, `main` crée le pool avec `mp.get_context("spawn").Pool(WORKERS)` (compatible Windows). `Search.batch` envoie les tâches avec `apply_async` et récupère les résultats disponibles sans attendre indéfiniment un calcul lent. Le pool est arrêté avec `terminate()` et `join()` en fin de recherche, avec une marge de temps prévue à cet effet.
+
+## 4. Résultats expérimentaux
 
 Les résultats suivants proviennent des exécutions réelles sous Windows, avec quatre processus et un budget de cinq minutes par instance. Le tableau utilise le premier essai de l'instance 7 pour garder un protocole homogène.
 
@@ -173,7 +189,7 @@ Instance : 8 --- Meilleur mapping : [12, 10, 13, 14, 2, 3, 22, 19, 21, 18, 15, 1
 Instance : 9 --- Meilleur mapping : [1, 20, 6, 15, 23, 12, 21, 25, 11, 24, 19, 26, 22, 9, 8, 3, 4, 5, 2, 10, 7, 17, 13, 14, 16] --- Profondeur finale : 38
 ```
 
-## 6. Conclusion et limites
+## 5. Conclusion et limites
 
 La V7 exploite les avantages de plusieurs métaheuristiques au sein d'une même recherche. Le guide de graphe accélère l'intensification, les croisements et les perturbations diversifient la recherche, et les réévaluations réduisent l'influence du hasard de Qiskit.
 
