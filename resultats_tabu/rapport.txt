@@ -1,0 +1,68 @@
+RAPPORT - RECHERCHE TABOU
+=============================================
+Instances : 1 à 9 | Répétitions : 1
+Itérations max : 80 | Candidats : 24 | Tenure : 7
+Fitness = profondeur du circuit transpile (a minimiser)
+
+Instance 1 : OK
+  Qubits logiques/physiques : 12/16
+  Meilleure fitness : 24
+  Moyenne ± écart-type fitness : 24 ± 0.0
+  Temps moyen (s) : 34.368
+  Mapping : [1, 13, 4, 12, 3, 5, 14, 11, 8, 6, 10, 2]
+
+Instance 2 : OK
+  Qubits logiques/physiques : 16/16
+  Meilleure fitness : 59
+  Moyenne ± écart-type fitness : 59 ± 0.0
+  Temps moyen (s) : 71.825
+  Mapping : [4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 9, 10, 7, 8, 6, 5]
+
+Instance 3 : OK
+  Qubits logiques/physiques : 10/16
+  Meilleure fitness : 120
+  Moyenne ± écart-type fitness : 120 ± 0.0
+  Temps moyen (s) : 46.768
+  Mapping : [3, 15, 2, 4, 13, 11, 6, 5, 8, 10]
+
+Instance 4 : OK
+  Qubits logiques/physiques : 19/20
+  Meilleure fitness : 30
+  Moyenne ± écart-type fitness : 30 ± 0.0
+  Temps moyen (s) : 22.305
+  Mapping : [7, 10, 6, 9, 1, 18, 11, 8, 2, 12, 19, 14, 16, 4, 5, 17, 3, 15, 0]
+
+Instance 5 : OK
+  Qubits logiques/physiques : 12/20
+  Meilleure fitness : 309
+  Moyenne ± écart-type fitness : 309 ± 0.0
+  Temps moyen (s) : 73.586
+  Mapping : [11, 10, 19, 14, 16, 2, 3, 9, 1, 13, 8, 5]
+
+Instance 6 : OK
+  Qubits logiques/physiques : 14/20
+  Meilleure fitness : 27
+  Moyenne ± écart-type fitness : 27 ± 0.0
+  Temps moyen (s) : 38.452
+  Mapping : [8, 18, 2, 5, 10, 11, 7, 6, 9, 13, 3, 0, 17, 12]
+
+Instance 7 : OK
+  Qubits logiques/physiques : 20/27
+  Meilleure fitness : 36
+  Moyenne ± écart-type fitness : 36 ± 0.0
+  Temps moyen (s) : 30.806
+  Mapping : [15, 1, 18, 2, 17, 5, 21, 9, 6, 24, 7, 12, 23, 16, 26, 25, 22, 8, 13, 14]
+
+Instance 8 : OK
+  Qubits logiques/physiques : 20/27
+  Meilleure fitness : 25
+  Moyenne ± écart-type fitness : 25 ± 0.0
+  Temps moyen (s) : 41.974
+  Mapping : [21, 25, 16, 20, 2, 1, 7, 6, 19, 14, 22, 0, 9, 5, 11, 4, 26, 15, 10, 17]
+
+Instance 9 : OK
+  Qubits logiques/physiques : 25/27
+  Meilleure fitness : 57
+  Moyenne ± écart-type fitness : 57 ± 0.0
+  Temps moyen (s) : 37.239
+  Mapping : [4, 15, 21, 5, 19, 7, 14, 24, 0, 6, 18, 25, 26, 22, 16, 23, 13, 20, 11, 10, 12, 2, 3, 8, 9]
